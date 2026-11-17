@@ -58,7 +58,7 @@ cv.width=W*S;cv.height=H*S;
 const P={bg:'#0b0710',ink:'#efe8f7',lav:'#b9a3e3',lav2:'#8a74b8',deep:'#3a2a52',deeper:'#22182f',red:'#c0394b',dred:'#7a1f2d',gold:'#d9b45a',skin:'#f1d3bf',dim:'#9d8fb3'};
 const FONT="'Nanum Gothic Coding',monospace",TFONT="'Do Hyeon',sans-serif";
 const DAYS=['화요일','수요일','목요일','금요일','토요일','일요일'];
-const MEM={poster:'언더테일 포스터',hollow:'접어둔 지도',dawn:'새벽 2시의 기억',cat:'골목 고양이',vend:'자판기 음료',guide:'공략 표지판',shelfwork:'진열 정리',board:'칠판의 S/U',tablet:'갤탭이냐 무빙크냐',allproj:'기획 부자',jojo:'그 포즈',bench:'전시관 벤치'};
+const MEM={poster:'언더테일 포스터',hollow:'접어둔 지도',dawn:'새벽 2시의 기억',cat:'골목 고양이',vend:'자판기 음료',guide:'공략 표지판',shelfwork:'테이블 정리',board:'칠판의 S/U',tablet:'갤탭이냐 무빙크냐',allproj:'기획 부자',jojo:'그 포즈',bench:'전시관 벤치'};
 const MEMN=Object.keys(MEM).length;
 
 /* ---------- maps ---------- */
@@ -68,10 +68,10 @@ room:{name:'내 방',rows:['############','#..........#','#..........#','#......
  exits:[{x:5,y:8,to:'street',tx:2,ty:3,d:'down'}]},
 street:{name:'동네',rows:['BBBBBBBBBBBBBBBBBBBBBBBBBB','BBBBBBBBBBBBBBBBBBBBBBBBBB','BBDBBBBBBBDBBBBBBBDBBBBDBB','--------------------------','--------------------------','==========================','==========================','--------------------------',',,T,,,,T,,,,,,T,,,,,,,,,,,',',,,,,,,,,,,,,,,,,,,,,,,,,,','TTTTTTTTTTTTTTTTTTTTTTTTTT'],
  objs:[{id:'vend',t:'vend',x:7,y:3},{id:'cat',t:'cat',x:12,y:9},{id:'guide',t:'sign',x:21,y:8},{id:'lamp1',t:'lamp',x:14,y:3},{id:'lamp2',t:'lamp',x:4,y:7}],
- signs:[[2,'집'],[10,'알바처'],[18,'학교'],[23,'전시관']],
+ signs:[[2,'집'],[10,'카페'],[18,'학교'],[23,'전시관']],
  exits:[{x:2,y:2,to:'room',tx:5,ty:7,d:'up'},{x:10,y:2,to:'shop',tx:6,ty:8,d:'up'},{x:18,y:2,to:'school',tx:6,ty:8,d:'up'},{x:23,y:2,to:'gallery',tx:7,ty:8,d:'up'}]},
-shop:{name:'알바처',rows:['##############','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','######D#######'],
- objs:[{id:'counter',t:'counter',x:1,y:4,w:10,counter:true},{id:'boss',t:'npc',x:12,y:1,pal:{hair:'#3b2f2a',shirt:'#5c6b8a',pants:'#2a2433'},dir:'down'},{id:'fridge',t:'fridge',x:2,y:0,w:4},{id:'shelfwork',t:'rack',x:1,y:7,w:3},{id:'shelf2',t:'rack',x:9,y:7,w:3}],
+shop:{name:'카페',rows:['##############','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','######D#######'],
+ objs:[{id:'counter',t:'counter',x:1,y:4,w:10,counter:true},{id:'boss',t:'npc',x:12,y:1,pal:{hair:'#3b2f2a',shirt:'#5c6b8a',pants:'#2a2433'},dir:'down'},{id:'fridge',t:'showcase',x:2,y:0,w:4},{id:'menu',t:'menu',x:7,y:0,w:3},{id:'shelfwork',t:'table',x:2,y:7,w:2},{id:'shelf2',t:'table',x:9,y:7,w:2},{id:'plant',t:'plant',x:12,y:7}],
  exits:[{x:6,y:9,to:'street',tx:10,ty:3,d:'down'}]},
 school:{name:'강의실',rows:['##############','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','######D#######'],
  objs:[{id:'board',t:'board',x:4,y:0,w:6},{id:'prof',t:'npc',x:7,y:2,pal:{hair:'#8b8b95',shirt:'#3d4a3a',pants:'#2a2433'},dir:'down'},{id:'books',t:'shelf',x:12,y:1},
@@ -112,15 +112,15 @@ function syncDynamic(){
 /* ---------- content ---------- */
 const PAL=[{hair:'#2b2236',shirt:'#c0394b',pants:'#2a2433'},{hair:'#a07a4a',shirt:'#6b8a7a',pants:'#3a2a52'},{hair:'#111',shirt:'#d8d0e4',pants:'#4b3a66'}];
 const CUST={
-0:[{pal:PAL[0],l:'이거 계산해 주세요.',c:['어서오세요~!','(영혼 없이) 어서오세요'],r:'삑. 계산 완료.'},
-   {pal:PAL[1],l:'영수증도 주시겠어요?',c:['네, 여기요!','(영수증을 건넨다)'],r:'손님이 만족한 얼굴로 떠났다.'},
-   {pal:PAL[2],l:'여기 몇 시까지 해요?',c:['오늘은 제가 22시까지 있어요','(시계를 본다) 아직 한참이요…'],r:'손님은 고개를 끄덕이고 나갔다.'}],
-4:[{pal:PAL[1],l:'아침부터 고생 많으세요.',c:['감사합니다!','(아직 덜 깼다) 네에…'],r:'주말 아침 첫 계산 완료.'},
-   {pal:PAL[2],l:'봉투 하나만 주세요.',c:['여기 있습니다~','(봉투를 펼친다)'],r:'바스락. 계산 완료.'},
+0:[{pal:PAL[0],l:'아이스 아메리카노 한 잔이요.',c:['네! 사이즈는요?','(벌써 컵을 집는다)'],r:'달그락, 얼음 소리. 주문 완료.'},
+   {pal:PAL[1],l:'디저트 뭐가 맛있어요?',c:['오늘은 치즈케이크요!','(쇼케이스를 가리킨다)'],r:'손님이 케이크를 하나 추가했다.'},
+   {pal:PAL[2],l:'여기 몇 시까지 해요?',c:['오늘은 제가 22시까지 있어요','(시계를 본다) 아직 한참이요…'],r:'손님은 고개를 끄덕이고 자리로 갔다.'}],
+4:[{pal:PAL[1],l:'아침부터 고생 많으세요. 따뜻한 라떼요.',c:['감사합니다!','(아직 덜 깼다) 네에…'],r:'치이익— 스팀 소리와 함께 주말 첫 주문 완료.'},
+   {pal:PAL[2],l:'테이크아웃이요. 캐리어 하나 주세요.',c:['여기 있습니다~','(캐리어에 컵을 꽂는다)'],r:'두 잔이 캐리어에 쏙. 주문 완료.'},
    {pal:PAL[0],l:'혹시 내일도 나오세요?',c:['네, 일요일도 있어요!','(주 3일… 화·토·일…)'],r:'단골이 생긴 것 같다.'}],
-5:[{pal:PAL[2],l:'일요일 아침이네요~',c:['좋은 아침이에요!','(하품을 참는다)'],r:'계산 완료.'},
-   {pal:PAL[0],l:'만 원 냈는데요?',c:['네! 거스름돈 여기요','(동전을 센다)'],fail:true},
-   {pal:PAL[1],l:'수고하세요~',c:['안녕히 가세요!','(마지막 손님이다…!)'],r:'이번 주 마지막 계산 완료.'}]
+5:[{pal:PAL[2],l:'일요일 아침이네요~ 아메리카노요.',c:['좋은 아침이에요!','(하품을 참는다)'],r:'주문 완료.'},
+   {pal:PAL[0],l:'저… 바닐라 라떼 시켰는데요?',c:['네! 여기 나왔습니다','(음료를 내민다)'],fail:true},
+   {pal:PAL[1],l:'잘 마시고 가요~',c:['안녕히 가세요!','(마지막 손님이다…!)'],r:'이번 주 마지막 주문 완료.'}]
 };
 const PROJ=[
  ['《한 사람 몫의 식탁》','공포 쯔꾸르 기획서를 다시 펼쳤다. 연보라, 붉은색, 검정. 금색은 포인트로만.'],
@@ -132,7 +132,7 @@ const PROJ=[
 
 function objective(){
   const s=G.step,d=G.day;
-  return {goWork:d===0?'알바처로 출근 (15:00~22:00)':'알바처로 출근 (09:00~16:00)',checkin:'점장님께 출근 인사',serve:`손님 응대 (${G.served}/3)`,goHome:'집으로 귀가',sleep:'침대에서 자기',
+  return {goWork:d===0?'카페로 출근 (15:00~22:00)':'카페로 출근 (09:00~16:00)',checkin:'점장님께 출근 인사',serve:`손님 응대 (${G.served}/3)`,goHome:'집으로 귀가',sleep:'침대에서 자기',
    goSchool:'학교 가기 — 시리어스 게임 수업',cls:'교수님께 말 걸기',findBook:'책장에서 책 찾기',writeReport:'내 자리(금색)에서 레포트 쓰기',
    create:'PC로 작업하기',goDate:'전시관에서 애기 만나기',meet:'애기에게 말 걸기',view:`그림 감상 (${G.view.size}/3)`,talk:'애기에게 감상 말하기'}[s]||'';
 }
@@ -156,7 +156,7 @@ function gate(to){
     if(s==='create')return '오늘은 집에서 작업하는 날이다. PC부터 켜자.';
     return null;}
   if(to==='room'){if(['goWork','goSchool','goDate'].includes(s))return '지금 집에 들어가면 지각이다!';return null;}
-  if(to==='shop'){if(s==='goWork')return null;return [0,4,5].includes(d)?'오늘 근무는 끝났다. 집에 가자.':'오늘은 쉬는 날. 알바는 화·토·일!';}
+  if(to==='shop'){if(s==='goWork')return null;return [0,4,5].includes(d)?'오늘 근무는 끝났다. 집에 가자.':'오늘은 쉬는 날. 카페 알바는 화·토·일!';}
   if(to==='school'){if(s==='goSchool')return null;return '막학기라 수업이 많지 않다. 오늘은 수업 없음.';}
   if(to==='gallery'){if(s==='goDate')return null;return '전시는 애기랑 같이 보기로 했다.';}
   return null;
@@ -227,20 +227,21 @@ const ACT={
  async vend(){const c=await choice('','자판기다.',['음료를 뽑는다','지나간다']);if(!c){await say('','덜컹. 차가운 음료가 나왔다.');award('vend');}},
  async guide(){await say('','표지판: 「막히면 → 공략 보기」');await say('Mayo','…내 플레이 스타일 그 자체다.');award('guide');},
  async lamp(){await say('','가로등. 퇴근길엔 이게 제일 반갑다.');},
- async fridge(){await say('','음료 냉장고. 오늘도 시원하게 돌아간다.');},
- async shelfwork(){await say('','진열대. 삐뚤어진 상품을 한 줄로 맞췄다.');await say('Mayo','단순 반복 작업… 은근 힐링된다.');award('shelfwork');},
- async shelf2(){await say('','진열대. 정리는 끝나 있다.');},
- async counter(){await say('','계산대. 오늘도 잘 부탁해.');},
+ async fridge(){await say('','디저트 쇼케이스. 치즈케이크가 두 조각 남았다.');},
+ async menu(){await say('','메뉴판: 아메리카노 · 라떼 · 바닐라 라떼 · 오늘의 케이크');},
+ async shelfwork(){await say('','손님이 떠난 테이블. 컵을 치우고 깨끗이 닦았다.');await say('Mayo','단순 반복 작업… 은근 힐링된다.');award('shelfwork');},
+ async shelf2(){await say('','테이블은 이미 깨끗하다.');},
+ async counter(){await say('','카운터. 에스프레소 머신이 웅웅 돌아간다.');},
  async boss(){
   if(G.step==='checkin'){
    await say('점장',['Mayo 왔어? 오늘 15시부터 22시까지 부탁해.','','','','주말 아침이다! 09시부터 16시까지 잘 부탁해.','일요일까지 고마워. 오늘도 16시까지!'][G.day]);
-   await say('Mayo','네! 계산대 뒤로 들어가서 손님 받자.');G.time=G.day===0?'15:00':'09:00';G.step='serve';G.served=0;syncDynamic();return;}
-  await say('점장',G.step==='serve'?'손님 오셨다~ 계산대 부탁해!':'오늘도 수고했어. 조심히 들어가!');},
+   await say('Mayo','네! 카운터 안으로 들어가서 주문 받자.');G.time=G.day===0?'15:00':'09:00';G.step='serve';G.served=0;syncDynamic();return;}
+  await say('점장',G.step==='serve'?'주문 들어온다~ 카운터 부탁해!':'오늘도 수고했어. 조심히 들어가!');},
  async cust(o){
-  if(pl.y>3){await say('Mayo','계산대 안쪽(위쪽)으로 들어가야 계산할 수 있다.');return;}
+  if(pl.y>3){await say('Mayo','카운터 안쪽(위쪽)으로 들어가야 주문을 받을 수 있다.');return;}
   const c=CUST[G.day][o.ci];
   await choice('손님',c.l,c.c);
-  if(c.fail){shakeT=16;await say('','…앗, 거스름돈을 잘못 셌다.');await say('Mayo','(실패는 다시 하게 만든다… 수요일 수업에서 배운 거다.)');await say('','다시 세서 정확히 건넸다. 계산 완료.');}
+  if(c.fail){shakeT=16;await say('','…앗, 그냥 라떼를 만들어버렸다.');await say('Mayo','(실패는 다시 하게 만든다… 수요일 수업에서 배운 거다.)');await say('','바닐라 시럽을 넣어 다시 만들어 건넸다. 주문 완료.');}
   else await say('',c.r);
   G.served++;o.hidden=true;map.objs=map.objs.filter(x=>x!==o);
   G.time=(G.day===0?['17:20','19:40','21:55']:['10:50','13:10','15:55'])[G.served-1];
@@ -390,7 +391,10 @@ function obj(o){
    case 'tablet':R(x,y+8,16,8,'#5a4033');R(x+3,y+3,10,7,'#1a1a1f');R(x+4,y+4,8,5,'#d8d0e4');R(x+11,y+2,1,6,P.gold);break;
    case 'shelf':R(x+1,y,14,16,'#4a3326');for(let i=0;i<3;i++){R(x+2,y+1+i*5,12,1,'#2e2018');[P.red,P.lav,P.gold,'#6b8a7a'].forEach((c,j)=>R(x+3+j*3,y+2+i*5,2,4,c));}break;
    case 'plant':R(x+5,y+10,6,5,P.dred);ctx.fillStyle='#2f5240';ctx.beginPath();ctx.arc(x+8,y+7,5,0,7);ctx.fill();break;
-   case 'counter':R(x,y+3,w,13,'#4a3466');R(x,y+3,w,2,P.gold);R(x,y+14,w,2,'#22182f');R(x+w-30,y-1,10,5,'#111');R(x+w-29,y,8,2,'#6b8a7a');break;
+   case 'counter':R(x,y+3,w,13,'#4a3466');R(x,y+3,w,2,P.gold);R(x,y+14,w,2,'#22182f');R(x+18,y-6,12,10,'#8a8a96');R(x+19,y-5,10,3,'#5a5a66');R(x+21,y+1,2,2,'#111');R(x+25,y+1,2,2,'#111');if(frame%90<45)R(x+22,y-9,1,2,'#d8d0e466');R(x+w-30,y-1,10,5,'#111');R(x+w-29,y,8,2,'#6b8a7a');R(x+w-52,y,4,3,P.ink);R(x+w-46,y,4,3,P.ink);break;
+   case 'showcase':R(x,y+2,w,14,'#3b2c45');R(x+2,y+3,w-4,9,'#d8d0e433');for(let i=0;i<w-10;i+=10){R(x+4+i,y+8,6,4,'#f0e2c0');R(x+4+i,y+7,6,1,i%20?P.red:P.lav);}R(x,y+12,w,1,P.gold);break;
+   case 'menu':R(x+2,y+1,w-4,11,'#141018');R(x+2,y+1,w-4,1,P.gold);for(let i=0;i<3;i++){R(x+6,y+4+i*3,18,1,'#d8d0e4aa');R(x+w-12,y+4+i*3,6,1,P.gold);}break;
+   case 'table':R(x+3,y+4,w-6,8,'#6e5040');R(x+3,y+4,w-6,2,'#8a6650');R(x+w/2-1,y+12,2,4,'#3b2a20');R(x,y+7,3,6,'#4a3466');R(x+w-3,y+7,3,6,'#4a3466');R(x+8,y+3,3,3,P.ink);R(x+w-12,y+3,3,3,P.ink);break;
    case 'fridge':for(let i=0;i<(o.w||1);i++){R(x+i*16+1,y+1,14,14,'#1a2a33');R(x+i*16+2,y+2,12,10,'#2c4552');[P.red,P.gold,P.lav].forEach((c,j)=>R(x+i*16+3+j*4,y+4,2,6,c));}break;
    case 'rack':R(x,y+2,w,14,'#3b2c45');for(let i=0;i<w;i+=4){R(x+i+1,y+4,2,4,[P.red,P.lav,P.gold,'#6b8a7a'][(i/4)%4]);R(x+i+1,y+10,2,4,[P.gold,P.red,'#6b8a7a',P.lav][(i/4)%4]);}break;
    case 'board':R(x,y+1,w,12,'#1f2e2a');R(x,y+1,w,1,'#6b5a4a');R(x,y+12,w,2,'#6b5a4a');ctx.save();text('S / U',x+w-22,y+4,6,'#d8d0e4cc');ctx.restore();R(x+6,y+5,30,1,'#d8d0e488');R(x+6,y+8,22,1,'#d8d0e488');break;
