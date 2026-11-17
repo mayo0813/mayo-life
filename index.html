@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAYO'S LIFE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding:wght@400;700&family=Do+Hyeon&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 조용한 레트로 쯔꾸르, 일상의 소소한 유머
+   IDEA: 연보라 휴대용 게임기 안에 들어있는 Mayo의 한 주
+   PICTURE: 탑다운 도트 맵 캔버스가 화면의 주인공
+   COLOUR and TYPE: 검정·연보라·붉은색, 금색은 포인트 / Do Hyeon + Nanum Gothic Coding
+   LAYOUT: 중앙 게임기 하우징, 아래 터치 패드 */
+:root{color-scheme:dark;--bg:#0b0710;--ink:#efe8f7;--lav:#b9a3e3;--deep:#2a1e3d;--red:#c0394b;--gold:#d9b45a}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:radial-gradient(ellipse at 50% 0%,#2a1e3d 0%,#0b0710 70%);color:var(--ink);font:16px/1.55 'Nanum Gothic Coding',monospace;min-height:100vh;overflow-x:clip;display:flex;flex-direction:column;align-items:center;padding:18px 12px 28px}
+h1{font:400 clamp(28px,5vw,44px)/1.05 'Do Hyeon',sans-serif;margin:4px 0 2px;color:var(--lav);letter-spacing:.02em}
+.sub{margin:0 0 14px;color:#9d8fb3;font-size:14px}
+.shell{width:min(100%,1000px);background:linear-gradient(#3a2a52,#22182f);border-radius:22px 22px 40px 22px;padding:16px;box-shadow:0 0 0 2px #4b3a66,0 24px 60px #000a,inset 0 2px 0 #5d4a7e}
+.screen{position:relative;background:#000;border-radius:8px;overflow:hidden;box-shadow:inset 0 0 0 3px #120c1a}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;aspect-ratio:4/3;touch-action:none}
+.pad{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:12px}
+.dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:2px}
+.dpad button,.ab{border:0;background:#120c1a;color:var(--lav);font:700 18px 'Nanum Gothic Coding',monospace;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.dpad button:active,.ab:active,.dpad button.on{background:#4b3a66}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .r{grid-column:3;grid-row:2}.dpad .d{grid-column:2;grid-row:3}
+.ab{width:76px;height:76px;border-radius:50%;background:var(--red);color:#fff;font-size:22px;box-shadow:0 4px 0 #7a1f2d}
+.ab:active{transform:translateY(3px);box-shadow:0 1px 0 #7a1f2d;background:var(--red)}
+.keys{color:#9d8fb3;font-size:14px;text-align:center;flex:1}
+.keys b{color:var(--gold);font-weight:700}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media(hover:hover) and (pointer:fine) and (min-width:700px){.dpad,.ab{display:none}}
+@media(max-width:600px){.shell{padding:10px;border-radius:16px 16px 28px 16px}.keys{display:none}}
+</style>
+</head>
+<body>
+<h1>MAYO'S LIFE</h1>
+<p class="sub">막학기의 한 주 — 쯔꾸르풍 탐색 게임</p>
+<div class="shell">
+  <div class="screen"><canvas id="c" aria-label="게임 화면"></canvas></div>
+  <div class="pad">
+    <div class="dpad" id="dpad">
+      <button class="u" data-k="up" aria-label="위">▲</button>
+      <button class="l" data-k="left" aria-label="왼쪽">◀</button>
+      <button class="r" data-k="right" aria-label="오른쪽">▶</button>
+      <button class="d" data-k="down" aria-label="아래">▼</button>
+    </div>
+    <div class="keys">이동 <b>방향키 / WASD</b> · 조사·대화 <b>Space / Enter / Z</b></div>
+    <button class="ab" id="ab" aria-label="조사">A</button>
+  </div>
+</div>
+<script>
+{
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const S=3,TS=16,VW=20,VH=15,W=VW*TS,H=VH*TS;
+cv.width=W*S;cv.height=H*S;
+const P={bg:'#0b0710',ink:'#efe8f7',lav:'#b9a3e3',lav2:'#8a74b8',deep:'#3a2a52',deeper:'#22182f',red:'#c0394b',dred:'#7a1f2d',gold:'#d9b45a',skin:'#f1d3bf',dim:'#9d8fb3'};
+const FONT="'Nanum Gothic Coding',monospace",TFONT="'Do Hyeon',sans-serif";
+const DAYS=['화요일','수요일','목요일','금요일','토요일','일요일'];
+const MEM={poster:'언더테일 포스터',hollow:'접어둔 지도',dawn:'새벽 2시의 기억',cat:'골목 고양이',vend:'자판기 음료',guide:'공략 표지판',shelfwork:'진열 정리',board:'칠판의 S/U',tablet:'갤탭이냐 무빙크냐',allproj:'기획 부자',jojo:'그 포즈',bench:'전시관 벤치'};
+const MEMN=Object.keys(MEM).length;
+
+/* ---------- maps ---------- */
+const MAPS={
+room:{name:'내 방',rows:['############','#..........#','#..........#','#..........#','#..........#','#..........#','#..........#','#..........#','#####D######'],
+ objs:[{id:'bed',t:'bed',x:1,y:1,h:2},{id:'poster',t:'poster',x:3,y:0},{id:'pc',t:'pc',x:5,y:1},{id:'tablet',t:'tablet',x:7,y:1},{id:'hollow',t:'shelf',x:9,y:1},{id:'plant',t:'plant',x:10,y:7},{id:'rug',t:'rug',x:4,y:4,w:4,h:2,solid:false}],
+ exits:[{x:5,y:8,to:'street',tx:2,ty:3,d:'down'}]},
+street:{name:'동네',rows:['BBBBBBBBBBBBBBBBBBBBBBBBBB','BBBBBBBBBBBBBBBBBBBBBBBBBB','BBDBBBBBBBDBBBBBBBDBBBBDBB','--------------------------','--------------------------','==========================','==========================','--------------------------',',,T,,,,T,,,,,,T,,,,,,,,,,,',',,,,,,,,,,,,,,,,,,,,,,,,,,','TTTTTTTTTTTTTTTTTTTTTTTTTT'],
+ objs:[{id:'vend',t:'vend',x:7,y:3},{id:'cat',t:'cat',x:12,y:9},{id:'guide',t:'sign',x:21,y:8},{id:'lamp1',t:'lamp',x:14,y:3},{id:'lamp2',t:'lamp',x:4,y:7}],
+ signs:[[2,'집'],[10,'알바처'],[18,'학교'],[23,'전시관']],
+ exits:[{x:2,y:2,to:'room',tx:5,ty:7,d:'up'},{x:10,y:2,to:'shop',tx:6,ty:8,d:'up'},{x:18,y:2,to:'school',tx:6,ty:8,d:'up'},{x:23,y:2,to:'gallery',tx:7,ty:8,d:'up'}]},
+shop:{name:'알바처',rows:['##############','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','######D#######'],
+ objs:[{id:'counter',t:'counter',x:1,y:4,w:10,counter:true},{id:'boss',t:'npc',x:12,y:1,pal:{hair:'#3b2f2a',shirt:'#5c6b8a',pants:'#2a2433'},dir:'down'},{id:'fridge',t:'fridge',x:2,y:0,w:4},{id:'shelfwork',t:'rack',x:1,y:7,w:3},{id:'shelf2',t:'rack',x:9,y:7,w:3}],
+ exits:[{x:6,y:9,to:'street',tx:10,ty:3,d:'down'}]},
+school:{name:'강의실',rows:['##############','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','#::::::::::::#','######D#######'],
+ objs:[{id:'board',t:'board',x:4,y:0,w:6},{id:'prof',t:'npc',x:7,y:2,pal:{hair:'#8b8b95',shirt:'#3d4a3a',pants:'#2a2433'},dir:'down'},{id:'books',t:'shelf',x:12,y:1},
+  ...[2,4,6,8,10].flatMap(x=>[{id:'desk',t:'desk',x,y:4},...(x===8?[]:[{id:'desk',t:'desk',x,y:6}])]),{id:'mydesk',t:'mydesk',x:8,y:6}],
+ exits:[{x:6,y:9,to:'street',tx:18,ty:3,d:'down'}]},
+gallery:{name:'전시관',rows:['################','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#CCCCCCCCCCCCCC#','#######D########'],
+ objs:[{id:'p1',t:'painting',x:3,y:0,c:['#5a3f7a','#c0394b']},{id:'p2',t:'painting',x:8,y:0,c:['#141022','#d9b45a']},{id:'p3',t:'painting',x:12,y:0,c:['#d8d0e4','#6b6378']},{id:'statue',t:'statue',x:13,y:5},{id:'bench',t:'bench',x:5,y:7,w:2},{id:'aegi',t:'npc',x:8,y:5,pal:{hair:'#5b2b3a',shirt:'#d9b45a',pants:'#3a2a52'},dir:'down',long:true}],
+ exits:[{x:7,y:9,to:'street',tx:23,ty:3,d:'down'}]}
+};
+const SOLID=new Set(['#','B','T','W']);
+
+/* ---------- state ---------- */
+let G,map,pl,busy=false,mode='title',dlg=null,banner=null,toast=null,fadeA=0,shakeT=0,gogo=0,frame=0;
+function reset(){G={day:0,step:'',time:'',mem:new Set(),served:0,view:new Set(),proj:new Set()};}
+reset();
+const sleep=f=>new Promise(r=>{const t0=frame;const ck=()=>frame-t0>=f?r():requestAnimationFrame(ck);ck();});
+
+/* ---------- dialog ---------- */
+function say(name,text){return new Promise(res=>{dlg={name,text,shown:0,res};});}
+function choice(name,text,opts){return new Promise(res=>{dlg={name,text,shown:0,opts,sel:0,res};});}
+function award(id){if(G.mem.has(id))return;G.mem.add(id);toast={text:'★ 추억 획득 — '+MEM[id],t:150};}
+function fadeTo(v){return new Promise(r=>{const st=fadeA,t0=frame;const ck=()=>{const k=Math.min(1,(frame-t0)/18);fadeA=st+(v-st)*k;k>=1?r():requestAnimationFrame(ck)};ck();});}
+function showBanner(t,s){return new Promise(r=>{banner={t,s,f:0,res:r};});}
+function run(fn){if(busy)return;busy=true;Promise.resolve().then(fn).catch(e=>console.error(e)).finally(()=>{busy=false;});}
+
+/* ---------- map ops ---------- */
+function load(id,x,y,d){map=MAPS[id];map.id=id;pl={x,y,px:x*TS,py:y*TS,d,mv:0,step:0};}
+async function goMap(id,x,y,d){await fadeTo(1);load(id,x,y,d);syncDynamic();await sleep(6);await fadeTo(0);await onEnter(id);}
+function objAt(x,y){return map.objs.find(o=>o.solid!==false&&!o.hidden&&x>=o.x&&x<o.x+(o.w||1)&&y>=o.y&&y<o.y+(o.h||1));}
+function tileAt(x,y){const r=map.rows[y];return r?r[x]:undefined;}
+function blocked(x,y){const t=tileAt(x,y);if(t===undefined)return true;if(SOLID.has(t))return true;return !!objAt(x,y);}
+function syncDynamic(){
+  const sh=MAPS.shop;sh.objs=sh.objs.filter(o=>!o.cust);
+  if(G.step==='serve'){CUST[G.day].forEach((c,i)=>{if(i>=G.served)sh.objs.push({id:'cust',cust:true,ci:i,t:'npc',x:[3,6,9][i],y:5,dir:'up',pal:c.pal});});}
+  MAPS.gallery.objs.find(o=>o.id==='aegi').hidden=!(G.day===3&&['meet','view','talk'].includes(G.step));
+}
+
+/* ---------- content ---------- */
+const PAL=[{hair:'#2b2236',shirt:'#c0394b',pants:'#2a2433'},{hair:'#a07a4a',shirt:'#6b8a7a',pants:'#3a2a52'},{hair:'#111',shirt:'#d8d0e4',pants:'#4b3a66'}];
+const CUST={
+0:[{pal:PAL[0],l:'이거 계산해 주세요.',c:['어서오세요~!','(영혼 없이) 어서오세요'],r:'삑. 계산 완료.'},
+   {pal:PAL[1],l:'영수증도 주시겠어요?',c:['네, 여기요!','(영수증을 건넨다)'],r:'손님이 만족한 얼굴로 떠났다.'},
+   {pal:PAL[2],l:'여기 몇 시까지 해요?',c:['오늘은 제가 22시까지 있어요','(시계를 본다) 아직 한참이요…'],r:'손님은 고개를 끄덕이고 나갔다.'}],
+4:[{pal:PAL[1],l:'아침부터 고생 많으세요.',c:['감사합니다!','(아직 덜 깼다) 네에…'],r:'주말 아침 첫 계산 완료.'},
+   {pal:PAL[2],l:'봉투 하나만 주세요.',c:['여기 있습니다~','(봉투를 펼친다)'],r:'바스락. 계산 완료.'},
+   {pal:PAL[0],l:'혹시 내일도 나오세요?',c:['네, 일요일도 있어요!','(주 3일… 화·토·일…)'],r:'단골이 생긴 것 같다.'}],
+5:[{pal:PAL[2],l:'일요일 아침이네요~',c:['좋은 아침이에요!','(하품을 참는다)'],r:'계산 완료.'},
+   {pal:PAL[0],l:'만 원 냈는데요?',c:['네! 거스름돈 여기요','(동전을 센다)'],fail:true},
+   {pal:PAL[1],l:'수고하세요~',c:['안녕히 가세요!','(마지막 손님이다…!)'],r:'이번 주 마지막 계산 완료.'}]
+};
+const PROJ=[
+ ['《한 사람 몫의 식탁》','공포 쯔꾸르 기획서를 다시 펼쳤다. 연보라, 붉은색, 검정. 금색은 포인트로만.'],
+ ['재판 퐁','증거를 모을수록 공이 세진다. 반박 이펙트를 조금 더 화려하게 다듬었다.'],
+ ['LIVE (초상권 대전)','길거리 스트리머 vs 지나가는 일반인. 밸런스 조정 중…'],
+ ['브라이언 해독 게임','라쿤시티 어딘가, 브라이언의 흔적. 치료제 샘플 위치를 하나 정했다.'],
+ ['BL 단편 콘티','《면회》와 시온·태경 단편. 컷 하나를 더 넣었다.'],
+ ['청이와 레몬','이별과 재회. 레몬의 대사 한 줄을 고쳤다.']];
+
+function objective(){
+  const s=G.step,d=G.day;
+  return {goWork:d===0?'알바처로 출근 (15:00~22:00)':'알바처로 출근 (09:00~16:00)',checkin:'점장님께 출근 인사',serve:`손님 응대 (${G.served}/3)`,goHome:'집으로 귀가',sleep:'침대에서 자기',
+   goSchool:'학교 가기 — 시리어스 게임 수업',cls:'교수님께 말 걸기',findBook:'책장에서 책 찾기',writeReport:'내 자리(금색)에서 레포트 쓰기',
+   create:'PC로 작업하기',goDate:'전시관에서 애기 만나기',meet:'애기에게 말 걸기',view:`그림 감상 (${G.view.size}/3)`,talk:'애기에게 감상 말하기'}[s]||'';
+}
+
+function gate(to){
+  const s=G.step,d=G.day;
+  if(map.id==='room'){
+    if(s==='sleep')return '오늘 할 일은 다 했다. 이제 자자.';
+    if(s==='create')return '오늘은 집에서 작업하는 날이다. PC부터 켜자.';
+    return null;}
+  if(to==='room'){if(['goWork','goSchool','goDate'].includes(s))return '지금 집에 들어가면 지각이다!';return null;}
+  if(to==='shop'){if(s==='goWork')return null;return [0,4,5].includes(d)?'오늘 근무는 끝났다. 집에 가자.':'오늘은 쉬는 날. 알바는 화·토·일!';}
+  if(to==='school'){if(s==='goSchool')return null;return '막학기라 수업이 많지 않다. 오늘은 수업 없음.';}
+  if(to==='gallery'){if(s==='goDate')return null;return '전시는 애기랑 같이 보기로 했다.';}
+  return null;
+}
+
+async function onEnter(id){
+  const d=G.day;
+  if(id==='shop'&&G.step==='goWork'){G.time=d===0?'14:55':'08:55';G.step='checkin';await say('Mayo','도착. 점장님께 인사부터 하자.');}
+  if(id==='school'&&G.step==='goSchool'){G.time='13:00';G.step='cls';await say('Mayo','강의실 도착. 교수님이 벌써 와 계신다.');}
+  if(id==='gallery'&&G.step==='goDate'){G.time='13:30';G.step='meet';syncDynamic();await say('Mayo','애기가 먼저 와 있다!');}
+  if(id==='room'&&G.step==='goHome'){
+    if(d===0){shakeT=12;await say('','지잉— 휴대폰이 울린다.');await say('애기','퇴근했어? 오늘도 고생 많았어.');
+      const c=await choice('Mayo','(답장을 보낸다)',['응! 이제 집 도착','옛날 새벽 알바 생각난다']);
+      if(c===1){await say('Mayo','예전에 새벽 알바하던 시절, 애기는 새벽 2시까지 날 기다려줬었지.');award('dawn');}
+      await say('애기','얼른 씻고 자! 내일 수업이잖아.');}
+    else if(d===1)await say('Mayo','레포트 제출 완료. 오늘은 푹 자자.');
+    else if(d===3)await say('Mayo','오늘 진짜 재밌었다. 다음엔 콘티 같이 보기로 했지.');
+    else if(d===4)await say('Mayo','토요일 근무 끝. 내일도 9시 출근이다…');
+    else if(d===5){await ending();return;}
+    G.step='sleep';
+  }
+}
+
+async function startDay(d){
+  G.day=d;G.served=0;load('room',2,2,'left');syncDynamic();
+  G.time=['13:30','10:00','11:00','12:00','08:20','08:20'][d];
+  fadeA=1;await fadeTo(0);
+  await showBanner(DAYS[d],['DAY 1 · 알바','DAY 2 · 막학기','DAY 3 · 창작','DAY 4 · 데이트','DAY 5 · 주말 알바','DAY 6 · 마지막 근무'][d]);
+  if(d===0){await say('','막학기 대학생 Mayo의 한 주가 시작된다.');await say('Mayo','화요일 오후. 15시 출근이다.');G.step='goWork';}
+  if(d===1){await say('Mayo','수요일. 막학기지만 수업은 수업이다. 오늘은 시리어스 게임 수업!');G.step='goSchool';}
+  if(d===2){await say('Mayo','목요일은 알바도 수업도 없다. 창작의 날!');G.step='create';}
+  if(d===3){shakeT=12;await say('','지잉— 휴대폰이 울린다.');await say('애기','오늘 전시 보러 가는 거 안 잊었지? 전시관에서 봐!');
+    const c=await choice('Mayo','(답장을 보낸다)',['당연하지! 지금 나갈게','(사실 방금 일어남)']);
+    await say('Mayo',c?'…빨리 씻고 나가야겠다.':'좋아, 출발!');G.step='goDate';}
+  if(d===4){await say('Mayo','토요일 09시 출근. 주말 알바는 아침부터다.');G.step='goWork';}
+  if(d===5){await say('Mayo','일요일. 이번 주 마지막 근무!');G.step='goWork';}
+}
+
+async function ending(){
+  shakeT=12;await say('','지잉— 애기에게서 전화가 왔다.');
+  await say('애기','이번 주도 수고했어! 막학기도 이제 진짜 얼마 안 남았다.');
+  await say('Mayo','응. 알바 21시간, 수업, 작업, 전시까지… 꽉 찬 한 주였어.');
+  await say('애기','다음 주도 같이 버티자!');
+  await fadeTo(1);mode='end';await fadeTo(0);
+}
+
+/* ---------- interactions ---------- */
+const ACT={
+ async bed(){
+  if(G.step!=='sleep'){await say('Mayo',G.day===2&&G.proj.size===0?'아직 아무것도 안 만들었다… 자면 안 돼.':'아직 잘 시간이 아니다.');return;}
+  const c=await choice('','잘까?',['잔다','조금 더 깨어 있는다']);if(c)return;
+  await fadeTo(1);G.time='';await sleep(20);await startDay(G.day+1);},
+ async poster(){await say('','언더테일 포스터. 블로그 프로필 사진도 이거다.');await say('Mayo','…보고 있으면 이상하게 결의가 생긴다.');award('poster');},
+ async hollow(){await say('','책장 구석에 접어둔 할로우 나이트 지도.');await say('Mayo','맵이 너무 커서 접었다. 정해진 길이 좋아…');award('hollow');},
+ async plant(){await say('','작은 화분. 물은 어제 줬다.');},
+ async tablet(){await say('','그림용 태블릿 자리.');await say('Mayo','갤탭이냐, 무빙크냐… 결정은 아직이다.');award('tablet');},
+ async pc(){
+  if(G.day!==2){await say('Mayo','작업은 목요일에 몰아서 하자. 오늘은 '+(G.step==='sleep'?'자야 한다.':'할 일이 있다.'));return;}
+  for(;;){
+   const opts=PROJ.map(p=>(G.proj.has(p[0])?'✓ ':'')+p[0]).concat(['오늘은 여기까지']);
+   const c=await choice('','어떤 작업을 할까?',opts);
+   if(c===PROJ.length)break;
+   await say('Mayo',PROJ[c][1]);G.proj.add(PROJ[c][0]);G.time=['13:00','15:00','17:00','19:00','21:00','23:00'][G.proj.size-1];
+   if(G.proj.size===PROJ.length){await say('Mayo','…잠깐, 기획이 왜 이렇게 많지?');award('allproj');break;}
+  }
+  if(G.proj.size&&G.step==='create'){G.step='sleep';await say('Mayo','오늘 작업 끝! 침대로 가자.');}},
+ async cat(){await say('고양이','냥.');await say('Mayo','오늘도 여기 있네.');award('cat');},
+ async vend(){const c=await choice('','자판기다.',['음료를 뽑는다','지나간다']);if(!c){await say('','덜컹. 차가운 음료가 나왔다.');award('vend');}},
+ async guide(){await say('','표지판: 「막히면 → 공략 보기」');await say('Mayo','…내 플레이 스타일 그 자체다.');award('guide');},
+ async lamp(){await say('','가로등. 퇴근길엔 이게 제일 반갑다.');},
+ async fridge(){await say('','음료 냉장고. 오늘도 시원하게 돌아간다.');},
+ async shelfwork(){await say('','진열대. 삐뚤어진 상품을 한 줄로 맞췄다.');await say('Mayo','단순 반복 작업… 은근 힐링된다.');award('shelfwork');},
+ async shelf2(){await say('','진열대. 정리는 끝나 있다.');},
+ async counter(){await say('','계산대. 오늘도 잘 부탁해.');},
+ async boss(){
+  if(G.step==='checkin'){
+   await say('점장',['Mayo 왔어? 오늘 15시부터 22시까지 부탁해.','','','','주말 아침이다! 09시부터 16시까지 잘 부탁해.','일요일까지 고마워. 오늘도 16시까지!'][G.day]);
+   await say('Mayo','네! 계산대 뒤로 들어가서 손님 받자.');G.time=G.day===0?'15:00':'09:00';G.step='serve';G.served=0;syncDynamic();return;}
+  await say('점장',G.step==='serve'?'손님 오셨다~ 계산대 부탁해!':'오늘도 수고했어. 조심히 들어가!');},
+ async cust(o){
+  if(pl.y>3){await say('Mayo','계산대 안쪽(위쪽)으로 들어가야 계산할 수 있다.');return;}
+  const c=CUST[G.day][o.ci];
+  await choice('손님',c.l,c.c);
+  if(c.fail){shakeT=16;await say('','…앗, 거스름돈을 잘못 셌다.');await say('Mayo','(실패는 다시 하게 만든다… 수요일 수업에서 배운 거다.)');await say('','다시 세서 정확히 건넸다. 계산 완료.');}
+  else await say('',c.r);
+  G.served++;o.hidden=true;map.objs=map.objs.filter(x=>x!==o);
+  G.time=(G.day===0?['17:20','19:40','21:55']:['10:50','13:10','15:55'])[G.served-1];
+  if(G.served===3){await fadeTo(1);G.time=G.day===0?'22:00':'16:00';syncDynamic();await sleep(10);await fadeTo(0);
+   await say('점장','수고했어! 이제 들어가~');await say('Mayo',G.day===5?'이번 주 근무 끝!':'퇴근이다!');G.step='goHome';}},
+ async prof(){
+  if(G.step==='cls'){
+   await say('교수','오늘은 Jesper Juul의 『The Art of Failure』를 다룹니다.');
+   await say('교수','우리는 실패를 싫어하면서도, 실패하게 만드는 게임으로 계속 돌아가죠. 그 역설이 오늘의 주제입니다.');
+   await say('교수','과제는 블로그글 형식 레포트. 책장에서 책을 찾아서 자리에서 써 보세요.');G.step='findBook';return;}
+  await say('교수',G.step==='goHome'?'수고했어요. 다음 주에 봅시다.':'천천히 해도 괜찮아요.');},
+ async books(){
+  if(G.step==='findBook'){await say('','『The Art of Failure』를 찾았다.');await say('Mayo','이제 금색 표시된 내 자리로.');G.step='writeReport';return;}
+  await say('','게임 연구서가 빽빽하다.');},
+ async mydesk(){
+  if(G.step!=='writeReport'){await say('','내 자리. '+(G.step==='goHome'?'레포트는 이미 제출했다.':'아직 쓸 게 없다.'));return;}
+  const c=await choice('Mayo','레포트 제목을 정하자.',['「막히면 공략 보는 사람의 실패론」','「별 세 개를 못 받으면 잠이 안 온다」','「정해진 루트가 주는 안심」']);
+  await say('','타닥타닥… 블로그에 업로드 완료!');
+  await say('Mayo',['공략도 실패를 다루는 하나의 방법이니까.','완벽주의자의 실패, 쓰다 보니 길어졌다.','자유도보다 길이 보이는 게임이 좋다는 이야기.'][c]);
+  await say('Mayo','S/U 과목이니까… S만 받으면 된다.');G.time='16:00';G.step='goHome';},
+ async desk(){await say('','다른 학생 자리다.');},
+ async board(){await say('','칠판 구석에 누군가 적어둔 낙서: 「S / U」');await say('Mayo','막학기의 진리.');award('board');},
+ async aegi(){
+  if(G.step==='meet'){await say('애기','왔어? 오늘도 국전 투어 시작!');await say('애기','그림 세 점 다 보고 나한테 와. 감상 나누자.');G.step='view';return;}
+  if(G.step==='view'){await say('애기',`아직 ${3-G.view.size}점 남았어!`);return;}
+  if(G.step==='talk'){
+   const c=await choice('애기','어땠어? 제일 좋았던 거.',['보랏빛 식탁','새벽 두 시','지운 선들']);
+   await say('애기',['역시. 네 공포 게임 생각났지?','그 창문… 나도 뭔가 생각나더라.','지운 선이 많은 그림, 나도 좋아.'][c]);
+   await say('애기','근데 저쪽 조각상 포즈, 완전 죠죠 아니야?');
+   const j=await choice('Mayo','(…따라 하고 싶다)',['포즈를 따라 한다','참는다']);
+   if(j===0){gogo=120;shakeT=20;await sleep(50);await say('애기','ㅋㅋㅋㅋ 사람들 쳐다봐!');award('jojo');}
+   else await say('','…결국 둘 다 몰래 웃었다.');
+   await say('애기','아 맞다, 학원 웹툰 과제 있는데 다음에 콘티 같이 봐줄래?');
+   await say('Mayo','당연하지.');G.time='18:00';G.step='goHome';syncDynamic();
+   await say('','애기와 헤어졌다. 집으로 가자.');return;}
+  await say('애기','오늘 즐거웠어!');},
+ async p1(){await art('p1','《보랏빛 식탁》','의자는 둘인데 접시는 하나뿐인 식탁.','…한 사람 몫의 식탁. 내 기획서가 떠오른다.');},
+ async p2(){await art('p2','《새벽 두 시》','어두운 거리, 불 켜진 창문 하나.','누군가를 기다리는 그림 같다.');},
+ async p3(){await art('p3','《지운 선들》','지우개 자국이 그대로 남은 드로잉.','실패한 선이 더 많은데, 이상하게 위로가 된다.');},
+ async statue(){await say('','묘하게 몸을 비튼 조각상. 기묘한 포즈다.');},
+ async bench(){await say('','전시관 벤치에 잠깐 앉았다. 다리가 풀린다.');award('bench');}
+};
+async function art(id,title,desc,mine){
+  await say('',title+' — '+desc);await say('Mayo',mine);
+  if(G.step==='view'){G.view.add(id);if(G.view.size===3){G.step='talk';await say('Mayo','다 봤다. 애기한테 가자.');}}
+}
+
+function interact(){
+  const [dx,dy]=DIR[pl.d];let fx=pl.x+dx,fy=pl.y+dy;let o=objAt(fx,fy);
+  if(o&&o.counter){const o2=objAt(fx+dx,fy+dy);if(o2)o=o2;}
+  if(!o)return;
+  const f=ACT[o.cust?'cust':o.id];
+  if(f)run(()=>f(o));
+}
+
+/* ---------- input ---------- */
+const DIR={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+const held=new Set();
+const KMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+function press(k){
+  if(mode==='title'){if(k==='act')begin();return;}
+  if(mode==='end'){if(k==='act'){reset();mode='title';}return;}
+  if(banner){if(k==='act'&&banner.f>20)banner.f=999;return;}
+  if(dlg){
+   if(dlg.opts&&dlg.shown>=dlg.text.length){if(k==='up')dlg.sel=(dlg.sel+dlg.opts.length-1)%dlg.opts.length;if(k==='down')dlg.sel=(dlg.sel+1)%dlg.opts.length;}
+   if(k==='act'){if(dlg.shown<dlg.text.length)dlg.shown=dlg.text.length;else{const d=dlg;dlg=null;d.res(d.opts?d.sel:undefined);}}
+   return;}
+  if(k==='act'&&!busy&&!pl.mv)interact();
+}
+function begin(){mode='play';reset();run(()=>startDay(0));}
+addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+  if(e.repeat&&!KMAP[e.key])return;
+  const k=KMAP[e.key];if(k){held.add(k);if(!e.repeat)press(k);}
+  if([' ','Enter','z','Z'].includes(e.key))press('act');
+});
+addEventListener('keyup',e=>{const k=KMAP[e.key];if(k)held.delete(k);});
+addEventListener('blur',()=>held.clear());
+document.querySelectorAll('#dpad button').forEach(b=>{
+  const k=b.dataset.k;
+  b.addEventListener('pointerdown',e=>{e.preventDefault();held.add(k);b.classList.add('on');press(k);});
+  const up=()=>{held.delete(k);b.classList.remove('on');};
+  b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);
+});
+document.getElementById('ab').addEventListener('pointerdown',e=>{e.preventDefault();press('act');});
+cv.addEventListener('pointerdown',()=>{if(mode!=='play'||dlg||banner)press('act');});
+
+/* ---------- update ---------- */
+function update(){
+  frame++;
+  if(dlg&&dlg.shown<dlg.text.length)dlg.shown=Math.min(dlg.text.length,dlg.shown+1);
+  if(banner){banner.f++;if(banner.f>110){const b=banner;banner=null;b.res();}}
+  if(toast&&--toast.t<=0)toast=null;
+  if(shakeT>0)shakeT--;if(gogo>0)gogo--;
+  if(mode!=='play'||!pl)return;
+  if(pl.mv){pl.px+=DIR[pl.d][0]*2;pl.py+=DIR[pl.d][1]*2;if(--pl.mv===0){pl.px=pl.x*TS;pl.py=pl.y*TS;}return;}
+  if(busy||dlg)return;
+  const k=['up','down','left','right'].find(k=>held.has(k));if(!k)return;
+  pl.d=k;const nx=pl.x+DIR[k][0],ny=pl.y+DIR[k][1];
+  const ex=map.exits.find(e=>e.x===nx&&e.y===ny);
+  if(ex){held.clear();const m=gate(ex.to);if(m)run(()=>say('',m));else run(()=>goMap(ex.to,ex.tx,ex.ty,ex.d));return;}
+  if(blocked(nx,ny))return;
+  pl.x=nx;pl.y=ny;pl.mv=8;pl.step++;
+}
+
+/* ---------- draw helpers ---------- */
+const R=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
+function text(s,x,y,size,c,al='left',f=FONT,wt=''){ctx.font=`${wt} ${size}px ${f}`;ctx.fillStyle=c;ctx.textAlign=al;ctx.textBaseline='top';ctx.fillText(s,x,y);}
+function wrap(s,maxW,size){ctx.font=`${size}px ${FONT}`;const out=[];let line='';for(const word of s.split(' ')){const t=line?line+' '+word:word;if(ctx.measureText(t).width<=maxW){line=t;continue;}if(line)out.push(line);line='';for(const ch of word){if(ctx.measureText(line+ch).width>maxW){out.push(line);line=ch;}else line+=ch;}}out.push(line);return out;}
+function box(x,y,w,h){R(x,y,w,h,'#120c1aee');R(x,y,w,1,P.lav);R(x,y+h-1,w,1,P.lav);R(x,y,1,h,P.lav);R(x+w-1,y,1,h,P.lav);R(x+1,y+1,2,2,P.gold);R(x+w-3,y+1,2,2,P.gold);}
+
+function tile(t,x,y,tx,ty){
+  const X=x,Y=y;
+  switch(t){
+   case '.':R(X,Y,16,16,'#3b2c45');R(X,Y+7,16,1,'#33263c');R(X+(ty%2?4:11),Y,1,7,'#33263c');R(X+(ty%2?9:2),Y+8,1,8,'#33263c');break;
+   case ':':R(X,Y,16,16,(tx+ty)%2?'#2c2638':'#312a3f');break;
+   case 'C':R(X,Y,16,16,'#4a1a26');R(X,Y,16,1,'#55202d');break;
+   case '#':R(X,Y,16,16,'#4b3a66');R(X,Y+12,16,4,'#2a1e3d');R(X,Y,16,1,'#5d4a7e');break;
+   case 'B':R(X,Y,16,16,'#3a2a52');R(X,Y+15,16,1,'#22182f');if(ty<2&&(tx%3===1)){R(X+4,Y+4,8,7,ty===0?'#22182f':'#d9b45a55');R(X+4,Y+4,8,1,'#8a74b8');}break;
+   case 'D':if(map.id==='street'){R(X,Y,16,16,'#3a2a52');R(X+3,Y+2,10,14,P.dred);R(X+3,Y+2,10,1,P.red);R(X+10,Y+9,2,2,P.gold);}else{R(X,Y,16,16,'#2c2638');R(X+2,Y,12,16,'#1a1324');R(X+2,Y+14,12,2,P.red);}break;
+   case '-':R(X,Y,16,16,'#4d4560');R(X,Y,1,16,'#443d56');R(X,Y,16,1,'#443d56');break;
+   case '=':R(X,Y,16,16,'#1d1826');if(ty===5&&tx%2===0)R(X+2,Y+15,10,2,'#d9b45a88');break;
+   case ',':R(X,Y,16,16,'#283229');if((tx*7+ty*3)%5===0)R(X+5,Y+6,1,2,'#3a4a3a');break;
+   case 'T':R(X,Y,16,16,'#283229');R(X+7,Y+10,2,5,'#3b2c25');ctx.fillStyle='#1f3a2c';ctx.beginPath();ctx.arc(X+8,Y+7,6.5,0,7);ctx.fill();R(X+5,Y+3,3,2,'#2f5240');break;
+  }
+}
+function person(x,y,pal,d,st,long){
+  const lg=(st%2)&&pl&&true;ctx.fillStyle='#0006';ctx.beginPath();ctx.ellipse(x+8,y+15,5,2,0,0,7);ctx.fill();
+  const leg=st%2;
+  R(x+5,y+12,2,3-(leg?1:0),pal.pants);R(x+9,y+12,2,3-(leg?0:1),pal.pants);
+  R(x+4,y+8,8,5,pal.shirt);R(x+3,y+8,1,4,P.skin);R(x+12,y+8,1,4,P.skin);
+  R(x+4,y+2,8,6,P.skin);
+  R(x+4,y+1,8,3,pal.hair);R(x+3,y+2,1,4,pal.hair);R(x+12,y+2,1,4,pal.hair);
+  if(long){R(x+3,y+2,1,8,pal.hair);R(x+12,y+2,1,8,pal.hair);}
+  if(d==='up')R(x+4,y+2,8,6,pal.hair);
+  else if(d==='down'){R(x+6,y+5,1,2,'#111');R(x+9,y+5,1,2,'#111');R(x+5,y+7,1,1,'#e8a0a8');R(x+10,y+7,1,1,'#e8a0a8');}
+  else if(d==='left'){R(x+5,y+5,1,2,'#111');R(x+9,y+2,3,5,pal.hair);}
+  else {R(x+10,y+5,1,2,'#111');R(x+4,y+2,3,5,pal.hair);}
+}
+function obj(o){
+  const x=o.x*TS,y=o.y*TS,w=(o.w||1)*TS,h=(o.h||1)*TS;
+  switch(o.t){
+   case 'rug':R(x+2,y+2,w-4,h-4,'#4a3466');R(x+4,y+4,w-8,h-8,'#5a3f7a');R(x+6,y+h/2-1,w-12,2,P.gold+'88');break;
+   case 'bed':R(x+1,y+1,14,30,P.dred);R(x+2,y+2,12,7,P.ink);R(x+2,y+10,12,20,P.lav2);R(x+2,y+10,12,2,P.lav);break;
+   case 'poster':R(x+2,y+2,12,11,'#0b0710');R(x+2,y+2,12,1,P.ink);R(x+6,y+6,2,2,P.red);R(x+8,y+6,2,2,P.red);R(x+6,y+8,4,1,P.red);R(x+7,y+9,2,1,P.red);R(x+5,y+6,1,1,P.red);R(x+10,y+6,1,1,P.red);break;
+   case 'pc':R(x,y+8,16,8,'#5a4033');R(x+2,y,12,9,'#111');R(x+3,y+1,10,6,frame%60<30?'#8a74b8':'#9d86c8');R(x+7,y+9,2,2,'#222');break;
+   case 'tablet':R(x,y+8,16,8,'#5a4033');R(x+3,y+3,10,7,'#1a1a1f');R(x+4,y+4,8,5,'#d8d0e4');R(x+11,y+2,1,6,P.gold);break;
+   case 'shelf':R(x+1,y,14,16,'#4a3326');for(let i=0;i<3;i++){R(x+2,y+1+i*5,12,1,'#2e2018');[P.red,P.lav,P.gold,'#6b8a7a'].forEach((c,j)=>R(x+3+j*3,y+2+i*5,2,4,c));}break;
+   case 'plant':R(x+5,y+10,6,5,P.dred);ctx.fillStyle='#2f5240';ctx.beginPath();ctx.arc(x+8,y+7,5,0,7);ctx.fill();break;
+   case 'counter':R(x,y+3,w,13,'#4a3466');R(x,y+3,w,2,P.gold);R(x,y+14,w,2,'#22182f');R(x+w-30,y-1,10,5,'#111');R(x+w-29,y,8,2,'#6b8a7a');break;
+   case 'fridge':for(let i=0;i<(o.w||1);i++){R(x+i*16+1,y+1,14,14,'#1a2a33');R(x+i*16+2,y+2,12,10,'#2c4552');[P.red,P.gold,P.lav].forEach((c,j)=>R(x+i*16+3+j*4,y+4,2,6,c));}break;
+   case 'rack':R(x,y+2,w,14,'#3b2c45');for(let i=0;i<w;i+=4){R(x+i+1,y+4,2,4,[P.red,P.lav,P.gold,'#6b8a7a'][(i/4)%4]);R(x+i+1,y+10,2,4,[P.gold,P.red,'#6b8a7a',P.lav][(i/4)%4]);}break;
+   case 'board':R(x,y+1,w,12,'#1f2e2a');R(x,y+1,w,1,'#6b5a4a');R(x,y+12,w,2,'#6b5a4a');ctx.save();text('S / U',x+w-22,y+4,6,'#d8d0e4cc');ctx.restore();R(x+6,y+5,30,1,'#d8d0e488');R(x+6,y+8,22,1,'#d8d0e488');break;
+   case 'desk':case 'mydesk':R(x+1,y+4,14,9,'#5a4033');R(x+1,y+4,14,2,'#6e5040');R(x+2,y+13,2,3,'#3b2a20');R(x+12,y+13,2,3,'#3b2a20');if(o.t==='mydesk'){R(x+5,y+6,6,4,P.ink);R(x+1,y+4,14,1,P.gold);if(G.step==='writeReport'&&frame%40<20)R(x+7,y-3,2,4,P.gold);}break;
+   case 'painting':R(x+1,y+1,14,12,P.gold);R(x+2,y+2,12,10,o.c[0]);if(o.id==='p1'){R(x+4,y+7,8,2,o.c[1]);R(x+7,y+5,2,2,P.ink);}if(o.id==='p2'){R(x+9,y+4,3,3,o.c[1]);R(x+3,y+9,9,1,'#333');}if(o.id==='p3'){R(x+4,y+4,7,1,o.c[1]);R(x+5,y+7,5,1,o.c[1]);R(x+3,y+9,8,1,'#aaa')}if(G.step==='view'&&!G.view.has(o.id)&&frame%40<20)R(x+7,y+13,2,2,P.gold);break;
+   case 'statue':R(x+3,y+11,10,5,'#6b6378');R(x+6,y+1,4,4,'#a8a0b8');R(x+5,y+5,6,6,'#a8a0b8');R(x+11,y+3,2,4,'#a8a0b8');R(x+3,y+6,2,3,'#a8a0b8');break;
+   case 'bench':R(x+1,y+5,w-2,4,'#5a4033');R(x+2,y+9,2,5,'#3b2a20');R(x+w-4,y+9,2,5,'#3b2a20');break;
+   case 'vend':R(x+1,y-6,14,22,P.red);R(x+3,y-4,10,9,'#1a1324');[P.gold,P.lav,P.ink].forEach((c,j)=>R(x+4+j*3,y-2,2,5,c));R(x+3,y+8,10,3,'#1a1324');break;
+   case 'cat':R(x+4,y+9,8,5,'#15111c');R(x+3,y+6,5,5,'#15111c');R(x+3,y+5,1,2,'#15111c');R(x+7,y+5,1,2,'#15111c');R(x+4,y+8,1,1,P.gold);R(x+6,y+8,1,1,P.gold);R(x+12,y+8+(frame%60<30?0:1),2,4,'#15111c');break;
+   case 'sign':R(x+7,y+8,2,8,'#4a3326');R(x+1,y+2,14,7,'#6e5040');R(x+3,y+4,10,1,P.ink);R(x+3,y+6,7,1,P.ink);break;
+   case 'lamp':R(x+7,y-10,2,24,'#22182f');R(x+5,y-12,6,3,'#22182f');ctx.fillStyle='#d9b45a33';ctx.beginPath();ctx.arc(x+8,y-8,8,0,7);ctx.fill();R(x+6,y-9,4,2,P.gold);break;
+   case 'npc':person(x,y,o.pal,o.dir||'down',0,o.long);break;
+  }
+}
+
+/* ---------- draw ---------- */
+function draw(){
+  ctx.setTransform(S,0,0,S,0,0);ctx.imageSmoothingEnabled=false;
+  R(0,0,W,H,P.bg);
+  if(mode==='title')return drawTitle();
+  if(mode==='end')return drawEnd();
+  const mw=map.rows[0].length*TS,mh=map.rows.length*TS;
+  let cx=mw<=W?-(W-mw)/2:Math.max(0,Math.min(mw-W,pl.px+8-W/2));
+  let cy=mh<=H-40?-(H-40-mh)/2-28:Math.max(-28,Math.min(mh-H+40,pl.py+8-H/2));
+  cx=Math.round(cx);cy=Math.round(cy);
+  let sx=shakeT?(frame%4<2?2:-2):0;
+  ctx.setTransform(S,0,0,S,(-cx+sx)*S,-cy*S);
+  map.rows.forEach((r,ty)=>[...r].forEach((t,tx)=>tile(t,tx*TS,ty*TS,tx,ty)));
+  if(map.signs)map.signs.forEach(([x,s])=>{text(s,x*TS+8,TS+4,7,P.lav,'center',TFONT);});
+  const ents=map.objs.filter(o=>!o.hidden).map(o=>({y:o.y+(o.h||1)-1+(o.t==='rug'?-10:0),f:()=>obj(o)}));
+  ents.push({y:pl.y+.5,f:()=>person(Math.round(pl.px),Math.round(pl.py),{hair:'#2b2236',shirt:P.lav,pants:'#22182f'},pl.d,pl.mv?Math.floor(pl.step+(pl.mv<4?1:0)):0)});
+  ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
+  ctx.setTransform(S,0,0,S,0,0);
+  if(gogo){ctx.globalAlpha=Math.min(1,gogo/30);for(let i=0;i<6;i++){const gx=40+i*48+(i%2?8:0),gy=60+Math.sin((frame+i*20)/8)*6+(i%3)*30;text('ゴ',gx,gy,22,i%2?P.lav:P.red,'center',TFONT);}ctx.globalAlpha=1;}
+  drawHUD();
+  if(toast){ctx.globalAlpha=Math.min(1,toast.t/20);const w=170;box((W-w)/2,44,w,18);text(toast.text,W/2,49,8,P.gold,'center');ctx.globalAlpha=1;}
+  if(dlg)drawDlg();
+  if(banner){const a=banner.f<15?banner.f/15:banner.f>90?Math.max(0,(110-banner.f)/20):1;ctx.globalAlpha=a;R(0,H/2-34,W,68,'#0b0710ee');R(0,H/2-34,W,1,P.lav);R(0,H/2+33,W,1,P.lav);text(banner.t,W/2,H/2-24,26,P.ink,'center',TFONT);text(banner.s,W/2,H/2+12,9,P.gold,'center');ctx.globalAlpha=1;}
+  if(fadeA>0){ctx.globalAlpha=fadeA;R(0,0,W,H,'#000');ctx.globalAlpha=1;}
+}
+function drawHUD(){
+  R(0,0,W,26,'#0b0710e6');R(0,26,W,1,P.deep);
+  text(`${DAYS[G.day]}  ${G.time}`,6,4,8,P.ink,'left',FONT,'700');
+  text(map.name,W/2,4,8,P.dim,'center');
+  text(`★ ${G.mem.size}/${MEMN}`,W-6,4,8,P.gold,'right',FONT,'700');
+  const ob=objective();if(ob)text('▸ '+ob,6,15,7,P.lav);
+}
+function drawDlg(){
+  const x=6,y=H-64,w=W-12,h=58;
+  if(dlg.opts&&dlg.shown>=dlg.text.length){
+   ctx.font=`8px ${FONT}`;const ow=Math.min(W-20,Math.max(...dlg.opts.map(o=>ctx.measureText(o).width))+26);const oh=dlg.opts.length*12+8;
+   const ox=W-ow-8,oy=y-oh-3;box(ox,oy,ow,oh);
+   dlg.opts.forEach((o,i)=>{const sel=i===dlg.sel;if(sel)R(ox+3,oy+4+i*12,ow-6,11,'#4b3a66');text((sel?'▶ ':'  ')+o,ox+6,oy+6+i*12,8,sel?P.ink:P.dim);});
+  }
+  box(x,y,w,h);
+  if(dlg.name){ctx.font=`700 8px ${FONT}`;const nw=ctx.measureText(dlg.name).width+12;R(x+6,y-9,nw,11,dlg.name==='Mayo'?P.lav2:dlg.name==='애기'?P.red:P.deep);text(dlg.name,x+12,y-7,8,P.ink,'left',FONT,'700');}
+  let left=dlg.shown;wrap(dlg.text,w-20,9).slice(0,4).forEach((l,i)=>{const part=l.slice(0,Math.max(0,left));left-=l.length+1;if(part)text(part,x+10,y+8+i*12,9,P.ink);});
+  if(dlg.shown>=dlg.text.length&&!dlg.opts&&frame%40<24)R(x+w-12,y+h-10,5,3,P.gold);
+}
+function drawTitle(){
+  for(let i=0;i<40;i++){const sx=(i*73)%W,sy=(i*41+frame/4)%H;R(sx,sy,1,1,i%5?P.deep:P.lav2);}
+  // little scene: home, Mayo, phone
+  const bx=W/2-60,by=96;R(bx,by+44,120,2,P.lav2);
+  R(bx+8,by+10,36,34,'#3a2a52');R(bx+16,by+18,8,8,P.gold+'99');R(bx+28,by+28,10,16,P.dred);
+  R(bx+76,by+16,32,28,'#3a2a52');R(bx+82,by+22,20,6,P.red);
+  person(bx+52,by+28,{hair:'#2b2236',shirt:P.lav,pants:'#22182f'},'down',0);
+  text("MAYO'S LIFE",W/2,30,30,P.lav,'center',TFONT);
+  text('막학기의 한 주',W/2,64,11,P.ink,'center');
+  text('알바 · 수업 · 창작 · 데이트, 엿새를 클리어하세요',W/2,160,8,P.dim,'center');
+  text(`숨겨진 추억 ★ ${MEMN}개`,W/2,174,8,P.gold,'center');
+  if(frame%60<40)text('▶  Enter / A 버튼으로 시작',W/2,204,9,P.ink,'center');
+}
+function drawEnd(){
+  text('WEEK CLEAR',W/2,14,28,P.lav,'center',TFONT);
+  text('막학기의 한 주를 무사히 버텼다.',W/2,48,9,P.ink,'center');
+  box(16,66,W-32,40);
+  text('근무  화 15–22 · 토 09–16 · 일 09–16',28,73,8,P.ink);
+  text('     = 7h × 3일 = 주 21시간',28,85,8,P.gold);
+  text(`추억 ★ ${G.mem.size} / ${MEMN}`,W/2,114,10,P.gold,'center',FONT,'700');
+  Object.entries(MEM).forEach(([k,v],i)=>{const col=i%2,row=Math.floor(i/2);text((G.mem.has(k)?'★ '+v:'☆ ???'),40+col*130,132+row*12,8,G.mem.has(k)?P.ink:P.dim);});
+  text(G.mem.size===MEMN?'완벽주의자 인정. 별 하나도 안 놓쳤다!':'놓친 추억이 있다… 다음 주(2회차)에 찾아보자.',W/2,210,8,G.mem.size===MEMN?P.gold:P.lav,'center');
+  if(frame%60<40)text('Enter / A — 처음부터',W/2,224,8,P.dim,'center');
+}
+
+function loop(){update();draw();requestAnimationFrame(loop);}
+(document.fonts?document.fonts.load(`10px 'Nanum Gothic Coding'`).then(()=>document.fonts.load(`10px 'Do Hyeon'`)):Promise.resolve()).catch(()=>{}).finally(loop);
+}
+</script>
+</body>
+</html>
